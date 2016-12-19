@@ -204,7 +204,7 @@ function Block(i, j, type, t) {
     this.finish = function() {
         for (var i in this.map.a) {
             var p = this.map.a[i];
-            this.t.set(this.i + p.i, this.j + p.j);
+            this.t.setVal(this.i + p.i, this.j + p.j, this.map.c);
         }
         this.t.block = null;
     };
@@ -275,6 +275,14 @@ function Tetris(w, h, b_d) {
         }
     };
 
+    this.getNewRow = function () {
+        var row = [];
+        for (var j = 0; j < this.w; j++) {
+            row.push(-1);
+        }
+        return row;
+    };
+
     this._init = function () {
         this.c = document.createElement("canvas");
 
@@ -291,11 +299,7 @@ function Tetris(w, h, b_d) {
 
         this.map = [];
         for (var i = 0; i < this.h; i++) {
-            var row = [];
-            for (var j = 0; j < this.w; j++) {
-                row.push(false);
-            }
-            this.map.push(row);
+            this.map.push(this.getNewRow());
         }
 
         this.toClear = [];
@@ -334,7 +338,7 @@ function Tetris(w, h, b_d) {
         if (this.outOfBounds(i, j)) return;
 
         if (this.get(i, j)) {
-            this.drawCoord(i, j, 0);
+            this.drawCoord(i, j, this.map[i][j]);
         }
         else {
             this.clearCoord(i, j);
@@ -365,9 +369,7 @@ function Tetris(w, h, b_d) {
 
     this.clearLine = function(i) {
         this.map.splice(i, 1);
-        var newRow = [];
-        for (var i = 0; i < this.w; i++) newRow.push(false);
-        this.map.unshift(newRow);
+        this.map.unshift(this.getNewRow());
     };
 
     this.clearLines = function() {
@@ -375,7 +377,7 @@ function Tetris(w, h, b_d) {
             var i = this.toClear.pop();
             this.clearLine(i);
             for (var j in this.toClear) {
-                if (i < this.toClear[j]) {
+                if (this.toClear[j] < i) {
                     this.toClear[j]++;
                 }
             }
@@ -405,17 +407,17 @@ function Tetris(w, h, b_d) {
     }
 
     this.set = function(i, j) {
-        this.setVal(i, j, true);
+        this.setVal(i, j, 0);
     };
 
     this.unset = function(i, j) {
-        this.setVal(i, j, false);
+        this.setVal(i, j, -1);
     };
 
     this.get = function(i, j) {
         if (this.outOfBounds(i, j)) return false;
 
-        return this.map[i][j];
+        return this.map[i][j] > -1;
     };
 
     this.step = function () {
