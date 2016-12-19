@@ -1,5 +1,4 @@
 var game;
-var block;
 
 function Point(i, j) {
     this.i = i;
@@ -157,6 +156,9 @@ function Block(i, j, type, t) {
             this.rightMost = null;
             this.bottomMost = null;
         }
+        else {
+            this.t.ticksLeft = this.t.ticksPerFall;
+        }
     }
 
     this.rotateLeft = function () {
@@ -256,6 +258,8 @@ function Tetris(w, h, b_d) {
     this.h = h;
     this.b_d = b_d;
     this.n = 2;
+    this.ticksPerFall = 5;
+    this.ticksLeft = this.ticksPerFall;
 
     this.blockQueue = [];
     this.linesDrawn = false;
@@ -421,20 +425,24 @@ function Tetris(w, h, b_d) {
     };
 
     this.step = function () {
-        if (!this.linesDrawn && this.hasLines()) {
-            this.drawLines();
-            this.linesDrawn = true;
-        }
-        else if (this.hasLines()) {
-            this.clearLines();
-            this.linesDrawn = false;
-        }
-        if ((this.block == null) && !this.linesDrawn) {
-            this.popBlock();
-            this.block.draw();
-        }
-        if (this.block != null) {
-            this.block.step();
+        this.ticksLeft--;
+        if (this.ticksLeft <= 0) {
+            if (!this.linesDrawn && this.hasLines()) {
+                this.drawLines();
+                this.linesDrawn = true;
+            }
+            else if (this.hasLines()) {
+                this.clearLines();
+                this.linesDrawn = false;
+            }
+            if ((this.block == null) && !this.linesDrawn) {
+                this.popBlock();
+                this.block.draw();
+            }
+            if (this.block != null) {
+                this.block.step();
+            }
+            this.ticksLeft = this.ticksPerFall;
         }
     };
 }
@@ -469,5 +477,5 @@ window.onload = function () {
 
     setInterval(function () {
         game.step();
-    }, 500);
+    }, 100);
 };
