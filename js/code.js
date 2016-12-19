@@ -10,47 +10,65 @@ function p(i, j) {
     return {"i": i, "j": j};
 }
 
+var blockColors = {
+    0: "black",
+    1: "cyan",
+    2: "blue",
+    3: "orange",
+    4: "yellow",
+    5: "lime",
+    6: "purple",
+    7: "red"
+};
+
 var blockTypes = {
     i: function() {
         return {
             a: [p(1,0), p(1,1), p(1,2), p(1,3)],
-            w: 4
+            w: 4,
+            c: 1
         }
     },
     j: function() {
         return {
             a: [p(1,0), p(1,1), p(1,2), p(2,2)],
-            w: 3
+            w: 3,
+            c: 2
         }
     },
     l: function() {
         return {
             a: [p(1,0), p(2,0), p(1,1), p(1,2)],
-            w: 3
+            w: 3,
+            c: 3
         }
     },
     o: function() {
         return {
             a: [p(0,0), p(1,0), p(0,1), p(1,1)],
-            w: 2
+            w: 2,
+            c: 4
         }
     },
     s: function() {
         return {
             a: [p(1,0), p(0,1), p(1,1), p(0,2)],
-            w: 3
+            w: 3,
+            c: 5
         }
     },
     t: function() {
         return {
             a: [p(1,0), p(1,1), p(2,1), p(1,2)],
-            w: 3
+            w: 3,
+            c: 6
         }
     },
     z: function() {
         return {
             a: [p(0,0), p(0,1), p(1,1), p(1,2)],
-            w: 3
+            w: 3,
+            c: 7
         }
     }
 };
@@ -119,30 +137,10 @@ function Block(i, j, type, t) {
         return this.i + this.bottomMost;
     };
 
-    this.rotateLeft = function () {
-        this.undraw();
-        for (var i in this.map.a) {
-            var p = this.map.a[i];
-            var tmp = this.map.w - p.j - 1;
-            p.j = p.i;
-            p.i = tmp;
-        }
+    this.checkRotation = function (oldMap) {
         this.leftMost = null;
         this.rightMost = null;
         this.bottomMost = null;
-        this.draw();
-    };
-
-    this.rotateRight = function () {
-        this.undraw();
-        for (var i in this.map.a) {
-            var p = this.map.a[i];
-            var tmp = this.map.w - p.i - 1;
-            p.i = p.j;
-            p.j = tmp;
-        }
-        this.leftMost = null;
-        this.rightMost = null;
         var moved = 0;
         while (this.getLeftMost() < 0) {
             this.j++;
@@ -152,18 +150,47 @@ function Block(i, j, type, t) {
             this.j--;
             moved--;
         }
+        if (this.checkCollision()) {
+            this.j += moved;
+            this.map.a = oldMap;
+            this.leftMost = null;
+            this.rightMost = null;
+            this.bottomMost = null;
+        }
+    }
+
+    this.rotateLeft = function () {
+        this.undraw();
+        var oldMap = [];
+        for (var i in this.map.a) {
+            var the_p = this.map.a[i];
+            oldMap.push(p(the_p.i, the_p.j));
+            var tmp = this.map.w - the_p.j - 1;
+            the_p.j = the_p.i;
+            the_p.i = tmp;
+        }
+        this.checkRotation(oldMap);
+        this.draw();
+    };
+
+    this.rotateRight = function () {
+        this.undraw();
+        var oldMap = [];
+        for (var i in this.map.a) {
+            var the_p = this.map.a[i];
+            oldMap.push(p(the_p.i, the_p.j));
+            var tmp = this.map.w - the_p.i - 1;
+            the_p.i = the_p.j;
+            the_p.j = tmp;
+        }
+        this.checkRotation(oldMap);
         this.draw();
     };
 
     this.draw = function() {
         for (var i in this.map.a) {
             var p = this.map.a[i];
-            this.t.ctx.beginPath();
-            this.t.ctx.fillStyle = "black";
-            this.t.ctx.fillRect((this.j + p.j) * this.t.b_d,
-                                (this.i + p.i) * this.t.b_d,
-                                this.t.b_d, this.t.b_d);
-            this.t.ctx.closePath();
+            this.t.drawCoord(this.i + p.i, this.j + p.j, this.map.c);
         }
     };
 
@@ -186,6 +213,9 @@ function Block(i, j, type, t) {
         if (this.getLeftMost() > 0) {
             this.undraw();
             this.j--;
+            if (this.checkCollision()) {
+                this.j++;
+            }
             this.draw();
         }
     };
@@ -194,6 +224,9 @@ function Block(i, j, type, t) {
         if (this.getRightMost() < (this.t.w - 1)) {
             this.undraw();
             this.j++;
+            if (this.checkCollision()) {
+                this.j--;
+            }
             this.draw();
         }
     };
@@ -278,18 +311,34 @@ function Tetris(w, h, b_d) {
         return (i < 0) || (j < 0) || (i >= this.h) || (j >= this.w);
     };
 
+    this.drawCoord = function (i, j, c) {
+        this.ctx.beginPath();
+        this.ctx.fillStyle = blockColors[c];
+        this.ctx.fillRect(j * this.b_d, i * this.b_d, this.b_d, this.b_d);
+        this.ctx.closePath();
+        if (this.b_d > 4) {
+            this.ctx.beginPath();
+            this.ctx.strokeStyle = "black";
+            this.ctx.strokeRect((j * this.b_d) + 1, (i * this.b_d + 1), this.b_d - 2, this.b_d - 2);
+            this.ctx.closePath();
+        }
+    };
+
+    this.clearCoord = function (i, j) {
+        this.ctx.beginPath();
+        this.ctx.clearRect(j * this.b_d, i * this.b_d, this.b_d, this.b_d);
+        this.ctx.closePath();
+    };
+
     this.draw = function(i, j) {
         if (this.outOfBounds(i, j)) return;
 
-        this.ctx.beginPath();
-        this.ctx.fillStyle = "black";
         if (this.get(i, j)) {
-            this.ctx.fillRect(j * this.b_d, i * this.b_d, this.b_d, this.b_d);
+            this.drawCoord(i, j, 0);
         }
         else {
-            this.ctx.clearRect(j * this.b_d, i * this.b_d, this.b_d, this.b_d);
+            this.clearCoord(i, j);
         }
-        this.ctx.closePath();
     };
 
     this.drawAll = function() {
