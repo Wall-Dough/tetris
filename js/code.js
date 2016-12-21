@@ -111,6 +111,19 @@ function KeyWatcher() {
     };
 }
 
+function drawCoordCtx(i, j, b_d, c, ctx) {
+    ctx.beginPath();
+    ctx.fillStyle = blockColors[c];
+    ctx.fillRect(j * b_d, i * b_d, b_d, b_d);
+    ctx.closePath();
+    if (b_d > 4) {
+        ctx.beginPath();
+        ctx.strokeStyle = "black";
+        ctx.strokeRect((j * b_d) + 1, (i * b_d + 1), b_d - 2, b_d - 2);
+        ctx.closePath();
+    }
+}
+
 function Block(i, j, type, t) {
     this.i = i;
     this.j = j;
@@ -314,6 +327,7 @@ function Tetris(w, h, b_d) {
     this.popBlock = function () {
         this.block = new Block(3, Math.floor(this.w / 2), this.blockQueue.pop(), this);
         this.addBlockToQueue();
+        this.drawNext();
     };
 
     this.addBlockToQueue = function () {
@@ -334,8 +348,22 @@ function Tetris(w, h, b_d) {
         return row;
     };
 
+    this.drawNext = function () {
+        this.nextCtx.beginPath();
+        this.nextCtx.clearRect(0, 0, this.nextC.width, this.nextC.height);
+        this.nextCtx.closePath();
+        var map = blockTypes[this.blockQueue[0]]();
+
+        for (var i in map.a) {
+            var p = map.a[i];
+            drawCoordCtx(p.i, p.j, this.b_d, map.c, this.nextCtx);
+        }
+    };
+
     this._init = function () {
+        var container = document.createElement("div");
         this.c = document.createElement("canvas");
+        this.c.setAttribute("id", "game");
 
         this.c.width = this.w * this.b_d;
         this.c.height = this.h * this.b_d;
@@ -344,7 +372,29 @@ function Tetris(w, h, b_d) {
         sizeString += " " + sizeString;
         this.c.setAttribute("style", "background-size: " + sizeString);
 
-        document.body.appendChild(this.c);
+        container.appendChild(this.c);
+
+        var rightPane = document.createElement("div");
+        rightPane.setAttribute("id", "right-pane");
+        var nextText = document.createElement("p");
+        nextText.innerHTML = "Next:";
+        rightPane.appendChild(nextText);
+        this.nextC = document.createElement("canvas");
+        this.nextC.width = 4 * this.b_d;
+        this.nextC.height = 4 * this.b_d;
+        this.nextC.setAttribute("style", "background-size: " + sizeString);
+        this.nextCtx = this.nextC.getContext("2d");
+        rightPane.appendChild(this.nextC);
+        var scoreText = document.createElement("p");
+        scoreText.innerHTML = "Score:";
+        rightPane.appendChild(scoreText);
+        this.scoreElement = document.createElement("p");
+        this.updateScore();
+        rightPane.appendChild(this.scoreElement);
+
+        container.appendChild(rightPane);
+
+        document.body.appendChild(container);
 
         this.ctx = this.c.getContext("2d");
 
@@ -367,16 +417,7 @@ function Tetris(w, h, b_d) {
     };
 
     this.drawCoord = function (i, j, c) {
-        this.ctx.beginPath();
-        this.ctx.fillStyle = blockColors[c];
-        this.ctx.fillRect(j * this.b_d, i * this.b_d, this.b_d, this.b_d);
-        this.ctx.closePath();
-        if (this.b_d > 4) {
-            this.ctx.beginPath();
-            this.ctx.strokeStyle = "black";
-            this.ctx.strokeRect((j * this.b_d) + 1, (i * this.b_d + 1), this.b_d - 2, this.b_d - 2);
-            this.ctx.closePath();
-        }
+        drawCoordCtx(i, j, this.b_d, c, this.ctx);
     };
 
     this.clearCoord = function (i, j) {
@@ -443,6 +484,7 @@ function Tetris(w, h, b_d) {
             }
         }
         this.drawAll();
+        this.updateScore();
     };
 
     this.drawLines = function() {
@@ -478,6 +520,10 @@ function Tetris(w, h, b_d) {
         if (this.outOfBounds(i, j)) return false;
 
         return this.map[i][j] > -1;
+    };
+
+    this.updateScore = function () {
+        this.scoreElement.innerHTML = this.totalLines.toString();
     };
 
     this.lose = function () {

@@ -2,3 +2,13 @@ canvas {
     border: 1px solid black;
     background-image: linear-gradient(to right, #CCC 1px, transparent 1px), linear-gradient(to bottom, #CCC 1px, transparent 1px);
 }
+
+#game {
+    float: left;
+    margin-right: 20px;
+}
+
+#right-pane {
+    float: left;
+    width: 100px;
+}
