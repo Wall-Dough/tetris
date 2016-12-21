@@ -1,4 +1,6 @@
 var game;
+var keys;
+var fps = 60;
 
 function Point(i, j) {
     this.i = i;
@@ -19,6 +21,11 @@ var blockColors = {
     6: "purple",
     7: "red"
 };
+
+var levelSpeeds = {0: 53, 1: 49, 2: 45, 3: 41, 4: 37,
+    5: 33, 6: 28, 7: 22, 8: 17, 9: 11,
+    10: 10, 11: 9, 12: 8, 13: 7, 14: 6,
+    15: 6, 16: 5, 17: 5, 18: 4, 19: 4, 20: 3};
 
 var blockTypes = {
     i: function() {
@@ -73,6 +80,36 @@ var blockTypes = {
 };
 
 var typesArray = Object.keys(blockTypes);
+
+function KeyWatcher() {
+    this.pressed = {};
+    this.handled = {};
+
+    this.isPressed = function(key) {
+        return Boolean(this.pressed[key]);
+    };
+
+    this.isHandled = function(key) {
+        return Boolean(this.handled[key]);
+    };
+
+    this.isReady = function(key) {
+        return this.isPressed(key) && !this.isHandled(key);
+    };
+
+    this.press = function(key) {
+        this.pressed[key] = true;
+    };
+
+    this.unpress = function(key) {
+        this.pressed[key] = false;
+        this.handled[key] = false;
+    };
+
+    this.handle = function(key) {
+        this.handled[key] = true;
+    };
+}
 
 function Block(i, j, type, t) {
     this.i = i;
@@ -258,11 +295,21 @@ function Tetris(w, h, b_d) {
     this.h = h;
     this.b_d = b_d;
     this.n = 2;
-    this.ticksPerFall = 5;
-    this.ticksLeft = this.ticksPerFall;
 
     this.blockQueue = [];
     this.linesDrawn = false;
+    this.lost = false;
+
+    this.stepInterval = -1;
+
+    this.level = 0;
+    this.maxLevel = 20;
+    this.linesTilNext = 10;
+    this.totalLines = 0;
+
+    this.ticksPerFall = levelSpeeds[this.level];
+    this.ticksLeft = this.ticksPerFall;
+    this.dasDelay = this.ticksPerFall / 3;
 
     this.popBlock = function () {
         this.block = new Block(3, Math.floor(this.w / 2), this.blockQueue.pop(), this);
@@ -374,6 +421,15 @@ function Tetris(w, h, b_d) {
     this.clearLine = function(i) {
         this.map.splice(i, 1);
         this.map.unshift(this.getNewRow());
+        this.totalLines++;
+        this.linesTilNext--;
+        if (this.linesTilNext <= 0) {
+            if (this.level < this.maxLevel) {
+                this.level++;
+                this.ticksPerFall = levelSpeeds[this.level];
+            }
+            this.linesTilNext += 10;
+        }
     };
 
     this.clearLines = function() {
@@ -424,7 +480,69 @@ function Tetris(w, h, b_d) {
         return this.map[i][j] > -1;
     };
 
+    this.lose = function () {
+        this.lost = true;
+    };
+
+    this.start = function () {
+        if (this.stepInterval > -1) return;
+        this.stepInterval = setInterval(function () {
+            game.step();
+        }, 1000 / fps);
+    };
+
+    this.pause = function () {
+
+    };
+
     this.step = function () {
+        if (this.block != null) {
+            if (keys.isReady(90)) {
+                this.block.rotateLeft();
+                keys.handle(90);
+            }
+            else if (keys.isReady(88)) {
+                this.block.rotateRight();
+                keys.handle(88);
+            }
+
+            if (keys.isPressed(37)) {
+                if (keys.isReady(37)) {
+                    this.block.moveLeft();
+                    keys.handle(37);
+                    this.dasDelay = this.ticksPerFall / 3;
+                }
+                this.dasDelay--;
+                if (this.dasDelay <= 0) {
+                    this.block.moveLeft();
+                    this.dasDelay = this.ticksPerFall / 6;
+                }
+            }
+            else if (keys.isPressed(39)) {
+                if (keys.isReady(39)) {
+                    this.block.moveRight();
+                    keys.handle(39);
+                    this.dasDelay = this.ticksPerFall / 3;
+                }
+                this.dasDelay--;
+                if (this.dasDelay <= 0) {
+                    this.block.moveRight();
+                    this.dasDelay = this.ticksPerFall / 6;
+                }
+            }
+
+            if (keys.isPressed(40)) {
+                if (keys.isReady(40)) {
+                    this.block.drop();
+                    this.ticksLeft = this.ticksPerFall;
+                    keys.handle(40);
+                }
+                if (this.ticksLeft > (this.ticksPerFall / 3)) {
+                    this.ticksLeft = Math.floor(this.ticksPerFall / 3);
+                }
+            }
+        }
+
         this.ticksLeft--;
         if (this.ticksLeft <= 0) {
             if (!this.linesDrawn && this.hasLines()) {
@@ -452,30 +570,16 @@ window.onload = function () {
     var h = 24;
     game = new Tetris(w, h, 25);
     game._init();
+    keys = new KeyWatcher();
+
+    window.onkeyup = function (e) {
+        var key = e.keyCode;
+        keys.unpress(key);
+    };
 
     window.onkeydown = function (e) {
         var key = e.keyCode;
-        console.log(key);
-        if (game.block != null) {
-            if (key == 90) {
-                game.block.rotateLeft();
-            }
-            else if (key == 88) {
-                game.block.rotateRight();
-            }
-            else if (key == 37) {
-                game.block.moveLeft();
-            }
-            else if (key == 39) {
-                game.block.moveRight();
-            }
-            else if (key == 40) {
-                game.block.drop();
-            }
-        }
+        keys.press(key);
     };
-
-    setInterval(function () {
-        game.step();
-    }, 100);
+    game.start();
 };
